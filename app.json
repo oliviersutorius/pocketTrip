@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "myTravel",
+    "name": "pocketTrip",
     "slug": "myTravel",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -16,10 +16,19 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "o13s.myTravel"
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-sqlite"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "3e4449b4-49be-4043-a9bb-b81e9b985507"
+      }
     }
   }
 }
