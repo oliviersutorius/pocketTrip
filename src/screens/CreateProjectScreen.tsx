@@ -21,8 +21,8 @@ interface LocalParticipant {
 }
 
 export default function CreateProjectScreen({ navigation, route }: RootStackProps<'CreateProject'> | RootStackProps<'EditProject'>) {
-  const params = (route as any).params as { projectId?: number } | undefined;
-  const mode: Mode = params?.projectId ? 'edit' : 'create';
+  const projectId = ((route as any).params as { projectId?: number } | undefined)?.projectId;
+  const mode: Mode = projectId ? 'edit' : 'create';
 
   const { createProject, updateProject } = useProjectStore();
 
@@ -57,9 +57,13 @@ export default function CreateProjectScreen({ navigation, route }: RootStackProp
   }, [navigation, dirty]);
 
   useEffect(() => {
-    if (mode === 'edit' && params?.projectId) {
-      async function load() {
-        const project = await getProject(params!.projectId!);
+    if (!projectId) return;
+    async function load(id: number) {
+      try {
+        const [project, existing] = await Promise.all([
+          getProject(id),
+          getParticipants(id),
+        ]);
         if (project) {
           setName(project.name);
           setStartDate(parseISO(project.start_date));
@@ -67,12 +71,13 @@ export default function CreateProjectScreen({ navigation, route }: RootStackProp
           setBudget(String(project.initial_budget));
           setCurrency(project.currency);
         }
-        const existing = await getParticipants(params!.projectId!);
         setParticipants(existing.map((p) => ({ id: p.id, name: p.name })));
+      } catch {
+        Alert.alert('Erreur', 'Impossible de charger les données du voyage.');
       }
-      load();
     }
-  }, []);
+    load(projectId);
+  }, [projectId]);
 
   function validate() {
     const e: Record<string, string> = {};
@@ -98,9 +103,9 @@ export default function CreateProjectScreen({ navigation, route }: RootStackProp
     };
 
     try {
-      if (mode === 'edit' && params?.projectId) {
-        await updateProject(params.projectId, data);
-        await syncProjectParticipants(params.projectId, participants);
+      if (mode === 'edit' && projectId) {
+        await updateProject(projectId, data);
+        await syncProjectParticipants(projectId, participants);
         savedRef.current = true;
         navigation.goBack();
       } else {

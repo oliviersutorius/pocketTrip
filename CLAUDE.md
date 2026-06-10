@@ -27,36 +27,48 @@ Application mobile de gestion de budget de voyage, disponible sur Android et iOS
 
 ### Projets vacances
 - Créer un projet avec : nom (ex. "Rome 2026"), date de début, date de fin, budget initial, devise par défaut
+- Ajouter des **participants** au projet (optionnel) — nom libre, max 100 caractères
 - Page dédiée aux informations du projet (toutes les infos sont modifiables)
+- Guard "Quitter sans enregistrer" si des modifications non sauvegardées sont détectées
 - Plusieurs projets peuvent coexister
 
 ### Catégories & sous-catégories (données initiales, seeded une seule fois)
 ```
-Transports       → Avion, Voiture, Essence, Péage, Parking
-Nourriture       → Restaurant, Sur le pouce, Supérette
-Visites          → Stade, Musée, Autres
-Shopping         → Perso, Cadeaux
+Transports  → Avion, Voiture, Essence, Péage, Parking, Bus/Métro/Tramway, Train
+Nourriture  → Restaurant, Sur le pouce, Supérette
+Visites     → Stade, Musée, Autres
+Shopping    → Perso, Cadeaux
+Logement    → Hôtel, Air BNB, Appart'Hôtel
 ```
 
-### Ajout d'une dépense (page dédiée)
-- Date de la dépense
-- Montant
-- Devise (EUR par défaut, modifiable)
+### Ajout / modification d'une dépense (page dédiée)
+- Date de la dépense (max : aujourd'hui, pas de dépense future)
+- Montant + devise (EUR par défaut, modifiable via picker intégré dans le champ)
 - Catégorie + sous-catégorie
+- Participant (optionnel — visible uniquement si le projet a des participants)
+- Commentaire libre (optionnel, max 500 caractères)
+- Modification et suppression depuis la liste des dépenses
 
 ### Récapitulatif des dépenses (par projet)
-- Tableau par catégorie : montant total par catégorie
-- Clic sur une catégorie → détail par sous-catégorie
+- Bilan budget : dépensé, budget initial, restant, barre de progression colorée
 - Calcul du **budget restant par jour** = (budget initial − total dépensé) ÷ jours restants
+- Dépenses du jour en cours (si le voyage a commencé)
+- Résumé **par participant** (masqué si aucun participant)
+- Tableau **par catégorie** : montant total — clic → détail par sous-catégorie
 
 ### Liste des dépenses
-- Toutes les dépenses du projet, triées par date (décroissant)
-- En bas de page : total dépensé + budget initial prévu
+- Dépenses groupées **par jour**, triées par date décroissante
+- Chaque groupe est collapsible (le jour le plus récent est ouvert par défaut)
+- En-tête affichant le total du jour
+- Chaque ligne affiche : sous-catégorie, catégorie · participant (si applicable), commentaire, montant, devise
+- Actions modifier et supprimer sur chaque dépense (suppression avec confirmation)
+- En-tête de liste : total dépensé + budget initial prévu
 
 ### Export PDF
-- Récapitulatif par catégorie et sous-catégorie
-- Total dépensé vs budget initial
-- Nom du fichier : `[nom-projet]_budget_[date-export].pdf`
+- Bilan budget avec camembert (dépensé vs restant, ou dépassement)
+- Récapitulatif par catégorie avec camemberts par sous-catégorie
+- Liste complète des dépenses groupées par catégorie/sous-catégorie
+- Partage natif via expo-sharing
 
 ---
 
@@ -86,31 +98,47 @@ CREATE TABLE projects (
   created_at     TEXT NOT NULL
 );
 
+-- Participants d'un projet (optionnel)
+CREATE TABLE participants (
+  id         INTEGER PRIMARY KEY,
+  project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  name       TEXT NOT NULL
+);
+
 -- Dépenses
 CREATE TABLE expenses (
   id             INTEGER PRIMARY KEY,
   project_id     INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   subcategory_id INTEGER NOT NULL REFERENCES subcategories(id),
+  participant_id INTEGER REFERENCES participants(id),  -- NULL si non attribué
   amount         REAL NOT NULL,
   currency       TEXT NOT NULL DEFAULT 'EUR',
   date           TEXT NOT NULL,  -- ISO 8601
+  comment        TEXT,           -- NULL si absent
   created_at     TEXT NOT NULL
 );
 ```
+
+Index présents : `(project_id, date DESC)`, `(subcategory_id)`, `(project_id)` sur participants, `(project_id, subcategory_id)` sur expenses.
+
+> Les colonnes `comment` et `participant_id` sont ajoutées par migration `ALTER TABLE` au démarrage si absentes (compatibilité bases existantes).
 
 ---
 
 ## Structure des écrans (navigation)
 
 ```
-App
-├── HomeScreen             — liste des projets vacances
-├── ProjectStack (par projet)
-│   ├── ProjectInfoScreen  — infos + modification du projet
-│   ├── SummaryScreen      — récapitulatif par catégorie (+ budget/jour)
-│   ├── ExpenseListScreen  — liste chronologique des dépenses
-│   └── AddExpenseScreen   — formulaire d'ajout de dépense
-└── (modal) CategoryDetail — détail sous-catégories (depuis SummaryScreen)
+App (Stack racine)
+├── HomeScreen                  — liste des projets vacances
+├── CreateProjectScreen         — création d'un nouveau voyage
+├── EditProjectScreen           — modification d'un voyage (même composant, mode détecté via params)
+├── ProjectTabs (Bottom Tabs, par projet)
+│   ├── SummaryScreen           — récapitulatif budget + catégories + participants
+│   ├── ExpenseListScreen       — liste des dépenses groupées par jour
+│   └── ProjectInfoScreen       — infos du projet, export PDF, suppression
+├── (modal) AddExpenseScreen    — ajout d'une dépense
+├── (modal) EditExpenseScreen   — modification d'une dépense (même composant que AddExpense)
+└── (modal) CategoryDetailScreen — détail sous-catégories avec dépenses (depuis SummaryScreen)
 ```
 
 ---
@@ -125,10 +153,13 @@ App
 | Surface | `#FFFFFF` |
 | Error | `#D32F2F` |
 | Text | `#1A237E` |
+| Budget positif | `#2E7D32` (vert — budget restant positif) |
 | Titres | Poppins SemiBold |
 | Corps | Poppins Regular |
 | Border radius cartes | 16 |
 | Icônes | Material outlined |
+
+Toutes les couleurs sémantiques sont centralisées dans `src/theme/index.ts` (objet `theme` pour les couleurs Material Design 3, objet `colors` pour les couleurs utilitaires).
 
 ---
 
@@ -136,11 +167,32 @@ App
 
 ```
 src/
-├── db/          — initialisation SQLite, requêtes
-├── stores/      — stores Zustand
-├── screens/     — un fichier par écran (PascalCase)
-├── components/  — composants réutilisables
-└── types/       — types TypeScript partagés
+├── db/
+│   └── database.ts       — init SQLite, migrations, toutes les requêtes
+├── stores/
+│   ├── projectStore.ts   — CRUD projets
+│   ├── expenseStore.ts   — CRUD dépenses, résumé catégories, résumé participants
+│   └── participantStore.ts — CRUD participants (utilisé par ProjectInfoScreen)
+├── screens/
+│   ├── HomeScreen.tsx
+│   ├── CreateProjectScreen.tsx  — création ET modification (param projectId → mode edit)
+│   ├── ProjectInfoScreen.tsx
+│   ├── SummaryScreen.tsx
+│   ├── ExpenseListScreen.tsx
+│   ├── AddExpenseScreen.tsx     — ajout ET modification (param expenseId → mode edit)
+│   └── CategoryDetailScreen.tsx
+├── components/
+│   ├── CurrencyPicker.tsx  — modal de sélection de devise, mode autonome ou contrôlé
+│   ├── OptionPicker.tsx    — modal de sélection générique (catégorie, sous-catégorie)
+│   └── ParticipantManager.tsx — ajout/suppression de participants dans un formulaire
+├── navigation/
+│   ├── index.tsx           — RootNavigator (Stack + ProjectTabs)
+│   └── types.ts            — types des paramètres de navigation
+├── utils/
+│   ├── pdfExport.ts        — génération HTML + SVG camemberts + export PDF
+│   └── validation.ts       — parseAmount (virgule/point, max 1 000 000)
+└── types/
+    └── index.ts            — interfaces TypeScript partagées
 ```
 
 ---
@@ -149,8 +201,8 @@ src/
 
 - TypeScript strict, pas de `any`
 - Un fichier par composant, nommé en PascalCase
-- Stores Zustand dans `src/stores/`
-- Accès SQLite via des fonctions dans `src/db/`
+- Stores Zustand dans `src/stores/` — cache par `loadedForProjectId`, invalidation explicite après mutation
+- Accès SQLite uniquement via `src/db/database.ts` (jamais directement depuis les screens)
 - Pas de commentaires sauf pour les invariants non-évidents
 - Toutes les dates stockées en ISO 8601, affichées avec date-fns en locale FR
 
