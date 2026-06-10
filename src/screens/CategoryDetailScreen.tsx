@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { View, ScrollView, StyleSheet } from 'react-native';
 import { Text, Card, TouchableRipple, Divider } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
@@ -28,6 +28,15 @@ export default function CategoryDetailScreen({ route }: RootStackProps<'Category
   if (!categorySummary || !project) return null;
 
   const subcategories = categorySummary.subcategories.filter((s) => s.total > 0);
+
+  const expensesBySubcategory = useMemo(() => {
+    const map = new Map<number, typeof expenses>();
+    for (const e of expenses) {
+      if (!map.has(e.subcategory_id)) map.set(e.subcategory_id, []);
+      map.get(e.subcategory_id)!.push(e);
+    }
+    return map;
+  }, [expenses]);
 
   if (subcategories.length === 0) {
     return (
@@ -59,7 +68,7 @@ export default function CategoryDetailScreen({ route }: RootStackProps<'Category
         <Card style={[styles.card, styles.accordionCard]}>
           {subcategories.map((sub, index) => {
             const isExpanded = expandedId === sub.subcategory_id;
-            const subExpenses = expenses.filter((e) => e.subcategory_id === sub.subcategory_id);
+            const subExpenses = expensesBySubcategory.get(sub.subcategory_id) ?? [];
 
             return (
               <View key={sub.subcategory_id}>

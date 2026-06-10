@@ -14,15 +14,6 @@ const SLICE_COLORS = [
   '#9C27B0', '#E91E63', '#FF5722', '#00897B',
 ];
 
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_|_$/g, '');
-}
-
 function formatAmount(amount: number, currency: string): string {
   return `${amount.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} ${escapeHtml(currency)}`;
 }
@@ -93,7 +84,7 @@ function buildBudgetSection(project: Project, totalSpent: number): string {
     ? [
         { color: '#1A6BAE', label: `Budget initial : ${formatAmount(project.initial_budget, project.currency)}` },
         { color: '#D32F2F', label: `Dépassement : ${formatAmount(totalSpent - project.initial_budget, project.currency)}` },
-        { color: '#1A6BAE', label: `Total dépensé : ${formatAmount(totalSpent, project.currency)}` },
+        { color: '#555', label: `Total dépensé : ${formatAmount(totalSpent, project.currency)}` },
       ]
     : [
         { color: '#1A6BAE', label: `Total dépensé : ${formatAmount(totalSpent, project.currency)}` },
@@ -312,7 +303,6 @@ export async function exportToPDF(
 ): Promise<void> {
   const html = buildHTML(project, summary, expenses, totalSpent);
   const { uri } = await Print.printToFileAsync({ html });
-  const dateStr = format(new Date(), 'yyyy-MM-dd');
 
   await Sharing.shareAsync(uri, {
     mimeType: 'application/pdf',

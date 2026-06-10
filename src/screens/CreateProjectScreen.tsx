@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Text, TextInput, Button, HelperText } from 'react-native-paper';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -8,7 +9,7 @@ import type { RootStackProps } from '../navigation/types';
 import { useProjectStore } from '../stores/projectStore';
 import { getProject, getParticipants, addParticipant, syncProjectParticipants } from '../db/database';
 import { parseAmount } from '../utils/validation';
-import CurrencyPicker from '../components/CurrencyPicker';
+import CurrencyPicker, { getCurrencySymbol } from '../components/CurrencyPicker';
 import ParticipantManager from '../components/ParticipantManager';
 import { theme, spacing, radius } from '../theme';
 
@@ -33,6 +34,7 @@ export default function CreateProjectScreen({ navigation, route }: RootStackProp
   const [participants, setParticipants] = useState<LocalParticipant[]>([]);
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
+  const [currencyPickerVisible, setCurrencyPickerVisible] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -116,10 +118,12 @@ export default function CreateProjectScreen({ navigation, route }: RootStackProp
 
   function handleAddParticipant(pName: string) {
     setParticipants((prev) => [...prev, { name: pName }]);
+    setDirty(true);
   }
 
   function handleRemoveParticipant(index: number) {
     setParticipants((prev) => prev.filter((_, i) => i !== index));
+    setDirty(true);
   }
 
   return (
@@ -151,7 +155,7 @@ export default function CreateProjectScreen({ navigation, route }: RootStackProp
           display="default"
           onChange={(_, date) => {
             setShowStartPicker(false);
-            if (date) setStartDate(date);
+            if (date) { setStartDate(date); setDirty(true); }
           }}
         />
       )}
@@ -172,7 +176,7 @@ export default function CreateProjectScreen({ navigation, route }: RootStackProp
           minimumDate={startDate}
           onChange={(_, date) => {
             setShowEndPicker(false);
-            if (date) setEndDate(date);
+            if (date) { setEndDate(date); setDirty(true); }
           }}
         />
       )}
@@ -186,11 +190,26 @@ export default function CreateProjectScreen({ navigation, route }: RootStackProp
         mode="outlined"
         style={styles.input}
         error={!!errors.budget}
-        right={<TextInput.Affix text={currency} />}
+        right={
+          <TextInput.Icon
+            icon={({ color, size }) => (
+              <View style={styles.currencyTrigger}>
+                <Text style={[styles.currencySymbol, { color }]}>{getCurrencySymbol(currency)}</Text>
+                <MaterialCommunityIcons name="menu-down" size={16} color={color} />
+              </View>
+            )}
+            onPress={() => setCurrencyPickerVisible(true)}
+          />
+        }
       />
       {errors.budget && <HelperText type="error">{errors.budget}</HelperText>}
 
-      <CurrencyPicker value={currency} onChange={setCurrency} label="Devise du budget" />
+      <CurrencyPicker
+        value={currency}
+        onChange={(c) => { setCurrency(c); setDirty(true); }}
+        visible={currencyPickerVisible}
+        onDismiss={() => setCurrencyPickerVisible(false)}
+      />
 
       <ParticipantManager
         participants={participants}
@@ -217,6 +236,8 @@ const styles = StyleSheet.create({
   content: { padding: spacing.md, paddingBottom: 40 },
   input: { marginVertical: 6 },
   dateButton: { marginVertical: 6 },
+  currencyTrigger: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  currencySymbol: { fontFamily: 'Poppins_600SemiBold', fontSize: 14 },
   saveButton: {
     marginTop: spacing.lg,
     borderRadius: radius.button,

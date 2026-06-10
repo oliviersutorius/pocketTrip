@@ -55,7 +55,9 @@ const DaySection = memo(function DaySection({
             <View key={expense.id} style={styles.expenseRow}>
               <View style={styles.expenseInfo}>
                 <Text variant="bodyMedium" style={styles.expenseName}>{expense.subcategory_name}</Text>
-                <Text variant="bodySmall" style={styles.expenseCategory}>{expense.category_name}</Text>
+                <Text variant="bodySmall" style={styles.expenseCategory}>
+                  {expense.category_name}{expense.participant_name ? ` · ${expense.participant_name}` : ''}
+                </Text>
                 {expense.comment ? (
                   <Text variant="bodySmall" style={styles.expenseComment}>{expense.comment}</Text>
                 ) : null}

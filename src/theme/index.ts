@@ -38,4 +38,5 @@ export const colors = {
   surfaceHighlight: '#E3F2FD', // fond chips, surfaces en surbrillance légère
   border: '#e0e0e0',         // séparateurs de liste, bordures de carte
   inputDisabled: '#ccc',     // icônes/inputs désactivés
+  budgetPositive: '#2E7D32', // budget restant positif (vert)
 } as const;

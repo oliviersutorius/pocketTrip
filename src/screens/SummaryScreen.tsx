@@ -106,7 +106,7 @@ export default function SummaryScreen({ route, navigation }: ProjectTabProps<'Su
             <ProgressBar progress={progress} color={progressColor} style={styles.progress} />
             <View style={styles.row}>
               <Text variant="bodyMedium" style={styles.label}>Restant</Text>
-              <Text variant="titleMedium" style={{ color: remaining >= 0 ? '#2E7D32' : theme.colors.error, fontFamily: 'Poppins_600SemiBold' }}>
+              <Text variant="titleMedium" style={[styles.bold, { color: remaining >= 0 ? colors.budgetPositive : theme.colors.error }]}>
                 {remaining.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} {project.currency}
               </Text>
             </View>
@@ -118,7 +118,7 @@ export default function SummaryScreen({ route, navigation }: ProjectTabProps<'Su
                   <Text variant="bodyMedium" style={styles.label}>
                     <MaterialCommunityIcons name="calendar-clock" size={14} /> {daysLeft} jour{daysLeft > 1 ? 's' : ''} restant{daysLeft > 1 ? 's' : ''}
                   </Text>
-                  <Text variant="titleSmall" style={{ color: budgetPerDay >= 0 ? theme.colors.primary : theme.colors.error, fontFamily: 'Poppins_600SemiBold' }}>
+                  <Text variant="titleSmall" style={[styles.bold, { color: budgetPerDay >= 0 ? theme.colors.primary : theme.colors.error }]}>
                     {budgetPerDay.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} {project.currency}/j
                   </Text>
                 </View>
@@ -127,7 +127,7 @@ export default function SummaryScreen({ route, navigation }: ProjectTabProps<'Su
                     <Text variant="bodyMedium" style={styles.label}>
                       <MaterialCommunityIcons name="calendar-today" size={14} /> {todayLabel}
                     </Text>
-                    <Text variant="titleSmall" style={{ color: theme.colors.onSurface, fontFamily: 'Poppins_600SemiBold' }}>
+                    <Text variant="titleSmall" style={[styles.bold, { color: theme.colors.onSurface }]}>
                       {spentToday.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} {project.currency}
                     </Text>
                   </View>
@@ -240,4 +240,5 @@ const styles = StyleSheet.create({
   emptyCard: { alignItems: 'center', paddingVertical: spacing.md },
   emptyText: { color: colors.textMuted, textAlign: 'center' },
   fabPdf: { position: 'absolute', right: spacing.md, bottom: 90, backgroundColor: theme.colors.secondary },
+  bold: { fontFamily: 'Poppins_600SemiBold' },
 });
