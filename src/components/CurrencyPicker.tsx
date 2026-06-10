@@ -26,15 +26,36 @@ const CURRENCIES = [
   { code: 'MXN', label: 'MXN Peso mexicain' },
 ];
 
+export function getCurrencySymbol(code: string): string {
+  const currency = CURRENCIES.find((c) => c.code === code);
+  if (!currency) return code;
+  return currency.label.split(' ')[0]; // "€", "$", "CHF", "CA$", etc.
+}
+
 interface Props {
   value: string;
   onChange: (code: string) => void;
   label?: string;
+  // Mode contrôlé : modal uniquement, sans bouton déclencheur
+  visible?: boolean;
+  onDismiss?: () => void;
 }
 
-export default function CurrencyPicker({ value, onChange, label = 'Devise' }: Props) {
-  const [visible, setVisible] = useState(false);
+export default function CurrencyPicker({ value, onChange, label = 'Devise', visible: externalVisible, onDismiss }: Props) {
+  const [internalVisible, setInternalVisible] = useState(false);
   const [search, setSearch] = useState('');
+
+  const isControlled = externalVisible !== undefined;
+  const visible = isControlled ? externalVisible : internalVisible;
+
+  function close() {
+    if (isControlled) {
+      onDismiss?.();
+    } else {
+      setInternalVisible(false);
+    }
+    setSearch('');
+  }
 
   const filtered = CURRENCIES.filter(
     (c) =>
@@ -46,15 +67,17 @@ export default function CurrencyPicker({ value, onChange, label = 'Devise' }: Pr
 
   return (
     <>
-      <Button
-        mode="outlined"
-        onPress={() => setVisible(true)}
-        style={styles.button}
-        contentStyle={styles.buttonContent}
-        icon="cash"
-      >
-        {label} : {selected?.code ?? value}
-      </Button>
+      {!isControlled && (
+        <Button
+          mode="outlined"
+          onPress={() => setInternalVisible(true)}
+          style={styles.button}
+          contentStyle={styles.buttonContent}
+          icon="cash"
+        >
+          {label} : {selected?.code ?? value}
+        </Button>
+      )}
 
       <Modal visible={visible} animationType="slide" transparent>
         <View style={styles.overlay}>
@@ -73,8 +96,7 @@ export default function CurrencyPicker({ value, onChange, label = 'Devise' }: Pr
                   title={c.label}
                   onPress={() => {
                     onChange(c.code);
-                    setVisible(false);
-                    setSearch('');
+                    close();
                   }}
                   right={() =>
                     c.code === value ? (
@@ -84,7 +106,7 @@ export default function CurrencyPicker({ value, onChange, label = 'Devise' }: Pr
                 />
               ))}
             </ScrollView>
-            <Button onPress={() => setVisible(false)} style={styles.cancel}>Annuler</Button>
+            <Button onPress={close} style={styles.cancel}>Annuler</Button>
           </Surface>
         </View>
       </Modal>

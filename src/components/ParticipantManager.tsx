@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     marginBottom: 6,
   },
-  input: { backgroundColor: theme.colors.surface },
+  input: {},
   list: {
     marginTop: spacing.sm,
     backgroundColor: theme.colors.surface,

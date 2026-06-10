@@ -129,6 +129,7 @@ export default function CreateProjectScreen({ navigation, route }: RootStackProp
         value={name}
         onChangeText={(t) => { setName(t); setDirty(true); }}
         placeholder="ex : Rome 2026"
+        mode="outlined"
         style={styles.input}
         error={!!errors.name}
         maxLength={100}
@@ -182,6 +183,7 @@ export default function CreateProjectScreen({ navigation, route }: RootStackProp
         value={budget}
         onChangeText={(t) => { setBudget(t); setDirty(true); }}
         keyboardType="decimal-pad"
+        mode="outlined"
         style={styles.input}
         error={!!errors.budget}
         right={<TextInput.Affix text={currency} />}
@@ -213,7 +215,7 @@ export default function CreateProjectScreen({ navigation, route }: RootStackProp
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background },
   content: { padding: spacing.md, paddingBottom: 40 },
-  input: { marginVertical: 6, backgroundColor: theme.colors.surface },
+  input: { marginVertical: 6 },
   dateButton: { marginVertical: 6 },
   saveButton: {
     marginTop: spacing.lg,
