@@ -17,7 +17,7 @@ interface ExpenseStore {
   deleteExpense: (id: number, projectId: number) => Promise<boolean>;
 }
 
-function sortExpenses(expenses: ExpenseWithDetails[]): ExpenseWithDetails[] {
+export function sortExpenses(expenses: ExpenseWithDetails[]): ExpenseWithDetails[] {
   return [...expenses].sort(
     (a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at)
   );

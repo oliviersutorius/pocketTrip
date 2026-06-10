@@ -4,7 +4,7 @@ import { format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import type { Project, CategorySummary, ExpenseWithDetails } from '../types';
 
-function escapeHtml(s: string): string {
+export function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
