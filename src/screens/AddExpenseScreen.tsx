@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { View, StyleSheet, ScrollView, Platform } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, ScrollView } from 'react-native';
 import { Text, TextInput, Button, HelperText } from 'react-native-paper';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { format, parseISO } from 'date-fns';
@@ -9,8 +9,8 @@ import { parseAmount } from '../utils/validation';
 import { useExpenseStore } from '../stores/expenseStore';
 import { getCategories, getSubcategories, getAllSubcategories, getExpense, getParticipants } from '../db/database';
 import CurrencyPicker from '../components/CurrencyPicker';
-import { theme, spacing, radius } from '../theme';
-import type { Participant } from '../types';
+import { theme, spacing, radius, colors } from '../theme';
+import type { Category, Subcategory, Participant } from '../types';
 
 type Props = RootStackProps<'AddExpense'> | RootStackProps<'EditExpense'>;
 
@@ -19,9 +19,11 @@ export default function AddExpenseScreen({ route, navigation }: Props) {
   const { projectId, expenseId } = params;
   const isEdit = !!expenseId;
 
-  const { addExpense, updateExpense } = useExpenseStore();
-  const [categories] = useState(() => getCategories());
-  const [participants] = useState<Participant[]>(() => getParticipants(projectId));
+  const { addExpense, updateExpense, isLoading } = useExpenseStore();
+
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
 
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -34,25 +36,39 @@ export default function AddExpenseScreen({ route, navigation }: Props) {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (isEdit && expenseId) {
-      const expense = getExpense(expenseId);
-      if (expense) {
-        setDate(parseISO(expense.date));
-        setAmount(String(expense.amount));
-        setCurrency(expense.currency);
-        setComment(expense.comment ?? '');
-        setSelectedSubcategoryId(expense.subcategory_id);
-        setSelectedParticipantId(expense.participant_id);
-        const sub = getAllSubcategories().find((s) => s.id === expense.subcategory_id);
-        if (sub) setSelectedCategoryId(sub.category_id);
+    async function loadInitialData() {
+      const [cats, parts] = await Promise.all([
+        getCategories(),
+        getParticipants(projectId),
+      ]);
+      setCategories(cats);
+      setParticipants(parts);
+
+      if (isEdit && expenseId) {
+        const expense = await getExpense(expenseId);
+        if (expense) {
+          setDate(parseISO(expense.date));
+          setAmount(String(expense.amount));
+          setCurrency(expense.currency);
+          setComment(expense.comment ?? '');
+          setSelectedSubcategoryId(expense.subcategory_id);
+          setSelectedParticipantId(expense.participant_id);
+          const allSubs = await getAllSubcategories();
+          const sub = allSubs.find((s) => s.id === expense.subcategory_id);
+          if (sub) setSelectedCategoryId(sub.category_id);
+        }
       }
     }
+    loadInitialData();
   }, []);
 
-  const subcategories = useMemo(
-    () => (selectedCategoryId ? getSubcategories(selectedCategoryId) : []),
-    [selectedCategoryId]
-  );
+  useEffect(() => {
+    if (selectedCategoryId) {
+      getSubcategories(selectedCategoryId).then(setSubcategories);
+    } else {
+      setSubcategories([]);
+    }
+  }, [selectedCategoryId]);
 
   function validate() {
     const e: Record<string, string> = {};
@@ -64,11 +80,12 @@ export default function AddExpenseScreen({ route, navigation }: Props) {
     return Object.keys(e).length === 0;
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!validate()) return;
 
+    let success: boolean;
     if (isEdit && expenseId) {
-      updateExpense(expenseId, projectId, {
+      success = await updateExpense(expenseId, projectId, {
         subcategory_id: selectedSubcategoryId!,
         participant_id: selectedParticipantId,
         amount: parseAmount(amount)!,
@@ -77,7 +94,7 @@ export default function AddExpenseScreen({ route, navigation }: Props) {
         comment: comment.trim() || null,
       });
     } else {
-      addExpense({
+      success = await addExpense({
         project_id: projectId,
         subcategory_id: selectedSubcategoryId!,
         participant_id: selectedParticipantId,
@@ -87,7 +104,7 @@ export default function AddExpenseScreen({ route, navigation }: Props) {
         comment: comment.trim() || null,
       });
     }
-    navigation.goBack();
+    if (success) navigation.goBack();
   }
 
   return (
@@ -104,7 +121,7 @@ export default function AddExpenseScreen({ route, navigation }: Props) {
         <DateTimePicker
           value={date}
           mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          display="default"
           maximumDate={new Date()}
           onChange={(_, d) => {
             setShowDatePicker(false);
@@ -174,7 +191,7 @@ export default function AddExpenseScreen({ route, navigation }: Props) {
               onPress={() => setSelectedParticipantId(null)}
               style={styles.categoryButton}
               compact
-              buttonColor={selectedParticipantId === null ? '#666' : undefined}
+              buttonColor={selectedParticipantId === null ? colors.textMuted : undefined}
             >
               Personne
             </Button>
@@ -202,6 +219,7 @@ export default function AddExpenseScreen({ route, navigation }: Props) {
         style={styles.commentInput}
         multiline
         numberOfLines={3}
+        maxLength={500}
       />
 
       <Button
@@ -209,6 +227,8 @@ export default function AddExpenseScreen({ route, navigation }: Props) {
         onPress={handleSave}
         style={styles.saveButton}
         contentStyle={styles.saveButtonContent}
+        loading={isLoading}
+        disabled={isLoading}
       >
         {isEdit ? 'Enregistrer les modifications' : 'Enregistrer la dépense'}
       </Button>

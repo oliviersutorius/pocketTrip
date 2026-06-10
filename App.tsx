@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, Alert } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { PaperProvider } from 'react-native-paper';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -19,12 +19,20 @@ export default function App() {
   const [fontsLoaded] = useFonts({ Poppins_400Regular, Poppins_600SemiBold });
 
   useEffect(() => {
-    try {
-      initDatabase();
-      loadProjects();
-    } finally {
-      setDbReady(true);
+    async function init() {
+      try {
+        await initDatabase();
+        await loadProjects();
+      } catch {
+        Alert.alert(
+          'Erreur critique',
+          "Impossible d'initialiser la base de données. Redémarrez l'application."
+        );
+      } finally {
+        setDbReady(true);
+      }
     }
+    init();
   }, []);
 
   if (!fontsLoaded || !dbReady) {

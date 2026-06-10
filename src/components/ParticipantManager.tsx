@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Text, TextInput, IconButton, Divider } from 'react-native-paper';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import { theme, spacing } from '../theme';
+import { theme, spacing, colors } from '../theme';
 
 interface LocalParticipant {
   id?: number;
@@ -19,7 +19,7 @@ export default function ParticipantManager({ participants, onAdd, onRemove }: Pr
   const [input, setInput] = useState('');
 
   function handleAdd() {
-    const trimmed = input.trim();
+    const trimmed = input.trim().slice(0, 100);
     if (!trimmed) return;
     const alreadyExists = participants.some(
       (p) => p.name.toLowerCase() === trimmed.toLowerCase()
@@ -40,12 +40,13 @@ export default function ParticipantManager({ participants, onAdd, onRemove }: Pr
         style={styles.input}
         onSubmitEditing={handleAdd}
         returnKeyType="done"
+        maxLength={100}
         right={
           <TextInput.Icon
             icon="account-plus"
             onPress={handleAdd}
             disabled={!input.trim()}
-            color={input.trim() ? theme.colors.primary : '#ccc'}
+            color={input.trim() ? theme.colors.primary : colors.inputDisabled}
           />
         }
       />
@@ -67,6 +68,7 @@ export default function ParticipantManager({ participants, onAdd, onRemove }: Pr
                   iconColor={theme.colors.error}
                   onPress={() => onRemove(index)}
                   style={styles.deleteButton}
+                  accessibilityLabel={`Retirer ${p.name}`}
                 />
               </View>
               {index < participants.length - 1 && <Divider />}
@@ -92,7 +94,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: colors.border,
   },
   row: {
     flexDirection: 'row',

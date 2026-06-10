@@ -17,16 +17,12 @@ import CreateProjectScreen from '../screens/CreateProjectScreen';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<ProjectTabParamList>();
 
-function truncate(name: string, max = 12): string {
-  return name.length > max ? name.slice(0, max) + '...' : name;
-}
-
 function ProjectTabs({ route, navigation }: RootStackProps<'ProjectTabs'>) {
   const { colors } = useTheme();
   const { projectId } = route.params;
   const { projects } = useProjectStore();
   const project = projects.find((p) => p.id === projectId);
-  const shortName = project ? truncate(project.name) : '';
+  const projectName = project?.name ?? '';
 
   return (
     <Tab.Navigator
@@ -37,7 +33,7 @@ function ProjectTabs({ route, navigation }: RootStackProps<'ProjectTabs'>) {
         headerShown: true,
         headerStyle: { backgroundColor: colors.primary },
         headerTintColor: '#FFFFFF',
-        headerTitleStyle: { fontFamily: 'Poppins_600SemiBold' },
+        headerTitleStyle: { fontFamily: 'Poppins_600SemiBold', flexShrink: 1 },
         headerLeft: () => (
           <MaterialCommunityIcons
             name="arrow-left"
@@ -55,7 +51,7 @@ function ProjectTabs({ route, navigation }: RootStackProps<'ProjectTabs'>) {
         initialParams={{ projectId }}
         options={{
           tabBarLabel: 'Récapitulatif',
-          headerTitle: shortName ? `Récapitulatif (${shortName})` : 'Récapitulatif',
+          headerTitle: projectName ? `Récapitulatif · ${projectName}` : 'Récapitulatif',
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="chart-bar" size={size} color={color} />
           ),
@@ -67,7 +63,7 @@ function ProjectTabs({ route, navigation }: RootStackProps<'ProjectTabs'>) {
         initialParams={{ projectId }}
         options={{
           tabBarLabel: 'Dépenses',
-          headerTitle: shortName ? `Dépenses (${shortName})` : 'Dépenses',
+          headerTitle: projectName ? `Dépenses · ${projectName}` : 'Dépenses',
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="format-list-bulleted" size={size} color={color} />
           ),

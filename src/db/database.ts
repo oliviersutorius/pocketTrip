@@ -1,8 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 import type { Category, Subcategory, Project, Participant, Expense, ExpenseWithDetails, CategorySummary, ParticipantSummary } from '../types';
 
-const db = SQLite.openDatabaseSync('mytravel.db');
-
 const SEED_DATA: { category: string; subcategories: string[] }[] = [
   { category: 'Transports', subcategories: ['Avion', 'Voiture', 'Essence', 'Péage', 'Parking', 'Bus/Métro/Tramway', 'Train'] },
   { category: 'Nourriture', subcategories: ['Restaurant', 'Sur le pouce', 'Supérette'] },
@@ -11,8 +9,13 @@ const SEED_DATA: { category: string; subcategories: string[] }[] = [
   { category: 'Logement', subcategories: ['Hôtel', 'Air BNB', "Appart'Hôtel"] },
 ];
 
-export function initDatabase(): void {
-  db.execSync(`
+// Assigned once in initDatabase(), before any other function is called (App.tsx gate ensures this).
+let db!: SQLite.SQLiteDatabase;
+
+export async function initDatabase(): Promise<void> {
+  db = await SQLite.openDatabaseAsync('mytravel.db');
+
+  await db.execAsync(`
     PRAGMA journal_mode = WAL;
     PRAGMA foreign_keys = ON;
 
@@ -55,36 +58,37 @@ export function initDatabase(): void {
       created_at     TEXT NOT NULL
     );
 
-    CREATE INDEX IF NOT EXISTS idx_expenses_project_date ON expenses(project_id, date DESC);
-    CREATE INDEX IF NOT EXISTS idx_expenses_subcategory  ON expenses(subcategory_id);
-    CREATE INDEX IF NOT EXISTS idx_participants_project  ON participants(project_id);
+    CREATE INDEX IF NOT EXISTS idx_expenses_project_date        ON expenses(project_id, date DESC);
+    CREATE INDEX IF NOT EXISTS idx_expenses_subcategory         ON expenses(subcategory_id);
+    CREATE INDEX IF NOT EXISTS idx_participants_project         ON participants(project_id);
+    CREATE INDEX IF NOT EXISTS idx_expenses_project_subcategory ON expenses(project_id, subcategory_id);
   `);
 
-  const columns = db.getAllSync<{ name: string }>('PRAGMA table_info(expenses)');
+  const columns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(expenses)');
   if (!columns.some((c) => c.name === 'comment')) {
-    db.execSync('ALTER TABLE expenses ADD COLUMN comment TEXT');
+    await db.execAsync('ALTER TABLE expenses ADD COLUMN comment TEXT');
   }
   if (!columns.some((c) => c.name === 'participant_id')) {
-    db.execSync('ALTER TABLE expenses ADD COLUMN participant_id INTEGER');
+    await db.execAsync('ALTER TABLE expenses ADD COLUMN participant_id INTEGER');
   }
 
-  db.withTransactionSync(() => {
+  await db.withTransactionAsync(async () => {
     for (const item of SEED_DATA) {
-      const existing = db.getFirstSync<{ id: number }>(
+      const existing = await db.getFirstAsync<{ id: number }>(
         'SELECT id FROM categories WHERE name = ?',
         [item.category]
       );
       const categoryId = existing
         ? existing.id
-        : db.runSync('INSERT INTO categories (name) VALUES (?)', [item.category]).lastInsertRowId;
+        : (await db.runAsync('INSERT INTO categories (name) VALUES (?)', [item.category])).lastInsertRowId;
 
       for (const sub of item.subcategories) {
-        const subExists = db.getFirstSync(
+        const subExists = await db.getFirstAsync(
           'SELECT id FROM subcategories WHERE category_id = ? AND name = ?',
           [categoryId, sub]
         );
         if (!subExists) {
-          db.runSync('INSERT INTO subcategories (category_id, name) VALUES (?, ?)', [categoryId, sub]);
+          await db.runAsync('INSERT INTO subcategories (category_id, name) VALUES (?, ?)', [categoryId, sub]);
         }
       }
     }
@@ -93,54 +97,54 @@ export function initDatabase(): void {
 
 // --- Categories ---
 
-export function getCategories(): Category[] {
-  return db.getAllSync<Category>('SELECT * FROM categories ORDER BY id');
+export async function getCategories(): Promise<Category[]> {
+  return db.getAllAsync<Category>('SELECT * FROM categories ORDER BY id');
 }
 
-export function getSubcategories(categoryId: number): Subcategory[] {
-  return db.getAllSync<Subcategory>(
+export async function getSubcategories(categoryId: number): Promise<Subcategory[]> {
+  return db.getAllAsync<Subcategory>(
     'SELECT * FROM subcategories WHERE category_id = ? ORDER BY id',
     [categoryId]
   );
 }
 
-export function getAllSubcategories(): Subcategory[] {
-  return db.getAllSync<Subcategory>('SELECT * FROM subcategories ORDER BY category_id, id');
+export async function getAllSubcategories(): Promise<Subcategory[]> {
+  return db.getAllAsync<Subcategory>('SELECT * FROM subcategories ORDER BY category_id, id');
 }
 
 // --- Projects ---
 
-export function getProjects(): Project[] {
-  return db.getAllSync<Project>('SELECT * FROM projects ORDER BY created_at DESC');
+export async function getProjects(): Promise<Project[]> {
+  return db.getAllAsync<Project>('SELECT * FROM projects ORDER BY created_at DESC');
 }
 
-export function getProject(id: number): Project | null {
-  return db.getFirstSync<Project>('SELECT * FROM projects WHERE id = ?', [id]) ?? null;
+export async function getProject(id: number): Promise<Project | null> {
+  return (await db.getFirstAsync<Project>('SELECT * FROM projects WHERE id = ?', [id])) ?? null;
 }
 
-export function createProject(data: Omit<Project, 'id' | 'created_at'>): number {
-  const result = db.runSync(
+export async function createProject(data: Omit<Project, 'id' | 'created_at'>): Promise<number> {
+  const result = await db.runAsync(
     'INSERT INTO projects (name, start_date, end_date, initial_budget, currency, created_at) VALUES (?, ?, ?, ?, ?, ?)',
     [data.name, data.start_date, data.end_date, data.initial_budget, data.currency, new Date().toISOString()]
   );
   return result.lastInsertRowId;
 }
 
-export function updateProject(id: number, data: Omit<Project, 'id' | 'created_at'>): void {
-  db.runSync(
+export async function updateProject(id: number, data: Omit<Project, 'id' | 'created_at'>): Promise<void> {
+  await db.runAsync(
     'UPDATE projects SET name = ?, start_date = ?, end_date = ?, initial_budget = ?, currency = ? WHERE id = ?',
     [data.name, data.start_date, data.end_date, data.initial_budget, data.currency, id]
   );
 }
 
-export function deleteProject(id: number): void {
-  db.runSync('DELETE FROM projects WHERE id = ?', [id]);
+export async function deleteProject(id: number): Promise<void> {
+  await db.runAsync('DELETE FROM projects WHERE id = ?', [id]);
 }
 
 // --- Expenses ---
 
-export function getExpenses(projectId: number): ExpenseWithDetails[] {
-  return db.getAllSync<ExpenseWithDetails>(
+export async function getExpenses(projectId: number): Promise<ExpenseWithDetails[]> {
+  return db.getAllAsync<ExpenseWithDetails>(
     `SELECT e.*, c.name as category_name, s.name as subcategory_name, p.name as participant_name
      FROM expenses e
      JOIN subcategories s ON e.subcategory_id = s.id
@@ -152,33 +156,45 @@ export function getExpenses(projectId: number): ExpenseWithDetails[] {
   );
 }
 
-export function createExpense(data: Omit<Expense, 'id' | 'created_at'>): number {
-  const result = db.runSync(
+export async function getExpenseWithDetails(id: number): Promise<ExpenseWithDetails | null> {
+  return (await db.getFirstAsync<ExpenseWithDetails>(
+    `SELECT e.*, c.name as category_name, s.name as subcategory_name, p.name as participant_name
+     FROM expenses e
+     JOIN subcategories s ON e.subcategory_id = s.id
+     JOIN categories c ON s.category_id = c.id
+     LEFT JOIN participants p ON e.participant_id = p.id
+     WHERE e.id = ?`,
+    [id]
+  )) ?? null;
+}
+
+export async function createExpense(data: Omit<Expense, 'id' | 'created_at'>): Promise<number> {
+  const result = await db.runAsync(
     'INSERT INTO expenses (project_id, subcategory_id, participant_id, amount, currency, date, comment, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
     [data.project_id, data.subcategory_id, data.participant_id ?? null, data.amount, data.currency, data.date, data.comment ?? null, new Date().toISOString()]
   );
   return result.lastInsertRowId;
 }
 
-export function getExpense(id: number): Expense | null {
-  return db.getFirstSync<Expense>('SELECT * FROM expenses WHERE id = ?', [id]) ?? null;
+export async function getExpense(id: number): Promise<Expense | null> {
+  return (await db.getFirstAsync<Expense>('SELECT * FROM expenses WHERE id = ?', [id])) ?? null;
 }
 
-export function updateExpense(id: number, data: Omit<Expense, 'id' | 'project_id' | 'created_at'>): void {
-  db.runSync(
+export async function updateExpense(id: number, data: Omit<Expense, 'id' | 'project_id' | 'created_at'>): Promise<void> {
+  await db.runAsync(
     'UPDATE expenses SET subcategory_id = ?, participant_id = ?, amount = ?, currency = ?, date = ?, comment = ? WHERE id = ?',
     [data.subcategory_id, data.participant_id ?? null, data.amount, data.currency, data.date, data.comment ?? null, id]
   );
 }
 
-export function deleteExpense(id: number): void {
-  db.runSync('DELETE FROM expenses WHERE id = ?', [id]);
+export async function deleteExpense(id: number): Promise<void> {
+  await db.runAsync('DELETE FROM expenses WHERE id = ?', [id]);
 }
 
 // --- Summary ---
 
-export function getCategorySummary(projectId: number): CategorySummary[] {
-  const rows = db.getAllSync<{
+export async function getCategorySummary(projectId: number): Promise<CategorySummary[]> {
+  const rows = await db.getAllAsync<{
     category_id: number;
     category_name: string;
     subcategory_id: number;
@@ -219,54 +235,54 @@ export function getCategorySummary(projectId: number): CategorySummary[] {
 
 // --- Participants ---
 
-export function getParticipants(projectId: number): Participant[] {
-  return db.getAllSync<Participant>(
+export async function getParticipants(projectId: number): Promise<Participant[]> {
+  return db.getAllAsync<Participant>(
     'SELECT * FROM participants WHERE project_id = ? ORDER BY id',
     [projectId]
   );
 }
 
-export function addParticipant(projectId: number, name: string): number {
-  return db.runSync(
+export async function addParticipant(projectId: number, name: string): Promise<number> {
+  return (await db.runAsync(
     'INSERT INTO participants (project_id, name) VALUES (?, ?)',
     [projectId, name]
-  ).lastInsertRowId;
+  )).lastInsertRowId;
 }
 
-export function removeParticipant(id: number): void {
-  db.withTransactionSync(() => {
-    db.runSync('UPDATE expenses SET participant_id = NULL WHERE participant_id = ?', [id]);
-    db.runSync('DELETE FROM participants WHERE id = ?', [id]);
+export async function removeParticipant(id: number): Promise<void> {
+  await db.withTransactionAsync(async () => {
+    await db.runAsync('UPDATE expenses SET participant_id = NULL WHERE participant_id = ?', [id]);
+    await db.runAsync('DELETE FROM participants WHERE id = ?', [id]);
   });
 }
 
-export function syncProjectParticipants(
+export async function syncProjectParticipants(
   projectId: number,
   incoming: { id?: number; name: string }[]
-): void {
-  db.withTransactionSync(() => {
-    const original = db.getAllSync<Participant>(
+): Promise<void> {
+  await db.withTransactionAsync(async () => {
+    const original = await db.getAllAsync<Participant>(
       'SELECT * FROM participants WHERE project_id = ? ORDER BY id',
       [projectId]
     );
     const keptIds = new Set(incoming.filter((p) => p.id !== undefined).map((p) => p.id!));
     for (const orig of original) {
       if (!keptIds.has(orig.id)) {
-        db.runSync('UPDATE expenses SET participant_id = NULL WHERE participant_id = ?', [orig.id]);
-        db.runSync('DELETE FROM participants WHERE id = ?', [orig.id]);
+        await db.runAsync('UPDATE expenses SET participant_id = NULL WHERE participant_id = ?', [orig.id]);
+        await db.runAsync('DELETE FROM participants WHERE id = ?', [orig.id]);
       }
     }
     const originalIds = new Set(original.map((p) => p.id));
     for (const p of incoming) {
       if (p.id === undefined || !originalIds.has(p.id)) {
-        db.runSync('INSERT INTO participants (project_id, name) VALUES (?, ?)', [projectId, p.name]);
+        await db.runAsync('INSERT INTO participants (project_id, name) VALUES (?, ?)', [projectId, p.name]);
       }
     }
   });
 }
 
-export function getParticipantSummary(projectId: number): ParticipantSummary[] {
-  return db.getAllSync<ParticipantSummary>(
+export async function getParticipantSummary(projectId: number): Promise<ParticipantSummary[]> {
+  return db.getAllAsync<ParticipantSummary>(
     `SELECT p.id as participant_id, p.name as participant_name, COALESCE(SUM(e.amount), 0) as total
      FROM participants p
      LEFT JOIN expenses e ON e.participant_id = p.id AND e.project_id = ?

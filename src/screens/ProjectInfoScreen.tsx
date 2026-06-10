@@ -9,7 +9,7 @@ import { useProjectStore } from '../stores/projectStore';
 import { useExpenseStore } from '../stores/expenseStore';
 import { useParticipantStore } from '../stores/participantStore';
 import { exportToPDF } from '../utils/pdfExport';
-import { theme, spacing, radius } from '../theme';
+import { theme, spacing, radius, colors } from '../theme';
 
 export default function ProjectInfoScreen({ route, navigation }: ProjectTabProps<'ProjectInfo'>) {
   const { projectId } = route.params;
@@ -58,8 +58,8 @@ export default function ProjectInfoScreen({ route, navigation }: ProjectTabProps
         {
           text: 'Supprimer',
           style: 'destructive',
-          onPress: () => {
-            deleteProject(projectId);
+          onPress: async () => {
+            await deleteProject(projectId);
             navigation.getParent()?.navigate('Home');
           },
         },
@@ -98,6 +98,7 @@ export default function ProjectInfoScreen({ route, navigation }: ProjectTabProps
         icon="pencil"
         style={styles.editButton}
         onPress={() => navigation.getParent()?.navigate('EditProject', { projectId })}
+        accessibilityLabel="Modifier le voyage"
       >
         Modifier le voyage
       </Button>
@@ -109,6 +110,7 @@ export default function ProjectInfoScreen({ route, navigation }: ProjectTabProps
         onPress={handleExport}
         disabled={exporting}
         buttonColor={theme.colors.secondary}
+        accessibilityLabel={exporting ? 'Génération du PDF en cours' : 'Exporter en PDF'}
       >
         {exporting ? 'Génération...' : 'Exporter en PDF'}
       </Button>
@@ -119,6 +121,7 @@ export default function ProjectInfoScreen({ route, navigation }: ProjectTabProps
         style={styles.deleteButton}
         textColor={theme.colors.error}
         onPress={handleDelete}
+        accessibilityLabel="Supprimer le voyage"
       >
         Supprimer le voyage
       </Button>
@@ -137,7 +140,7 @@ function Row({ label, value }: { label: string; value: string }) {
 
 const rowStyles = StyleSheet.create({
   row: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8 },
-  label: { color: '#666' },
+  label: { color: colors.textMuted },
   value: { fontFamily: 'Poppins_600SemiBold', color: theme.colors.onSurface },
 });
 
@@ -151,7 +154,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   divider: { marginBottom: spacing.sm },
-  participantsLabel: { color: '#666', marginBottom: spacing.sm },
+  participantsLabel: { color: colors.textMuted, marginBottom: spacing.sm },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { backgroundColor: theme.colors.background },
   chipText: { fontFamily: 'Poppins_400Regular' },

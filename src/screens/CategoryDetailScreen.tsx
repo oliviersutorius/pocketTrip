@@ -8,7 +8,7 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import type { RootStackProps } from '../navigation/types';
 import { useExpenseStore } from '../stores/expenseStore';
 import { useProjectStore } from '../stores/projectStore';
-import { theme, spacing, radius } from '../theme';
+import { theme, spacing, radius, colors } from '../theme';
 
 export default function CategoryDetailScreen({ route }: RootStackProps<'CategoryDetail'>) {
   const { categoryId, projectId } = route.params;
@@ -28,6 +28,16 @@ export default function CategoryDetailScreen({ route }: RootStackProps<'Category
   if (!categorySummary || !project) return null;
 
   const subcategories = categorySummary.subcategories.filter((s) => s.total > 0);
+
+  if (subcategories.length === 0) {
+    return (
+      <View style={styles.emptyContainer}>
+        <Text variant="bodyLarge" style={styles.emptyText}>
+          Aucune dépense dans la catégorie {categorySummary.category_name}
+        </Text>
+      </View>
+    );
+  }
 
   function toggle(id: number) {
     setExpandedId((prev) => (prev === id ? null : id));
@@ -64,7 +74,7 @@ export default function CategoryDetailScreen({ route }: RootStackProps<'Category
                       <MaterialCommunityIcons
                         name={isExpanded ? 'chevron-up' : 'chevron-down'}
                         size={20}
-                        color="#999"
+                        color={colors.textFaint}
                       />
                     </View>
                   </View>
@@ -104,6 +114,8 @@ export default function CategoryDetailScreen({ route }: RootStackProps<'Category
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background },
+  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl, backgroundColor: theme.colors.background },
+  emptyText: { color: colors.textMuted, textAlign: 'center' },
   list: { padding: spacing.md, gap: spacing.md },
   totalCard: {
     borderRadius: radius.card,
@@ -125,7 +137,7 @@ const styles = StyleSheet.create({
   subRight: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   subAmount: { fontFamily: 'Poppins_600SemiBold', color: theme.colors.primary },
   expenseList: {
-    backgroundColor: '#F0F7FF',
+    backgroundColor: theme.colors.background,
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
@@ -136,7 +148,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   expenseDivider: { opacity: 0.4 },
-  expenseDate: { color: '#555', fontFamily: 'Poppins_400Regular' },
-  expenseComment: { color: '#888', fontFamily: 'Poppins_400Regular', fontStyle: 'italic' },
+  expenseDate: { color: colors.textDark, fontFamily: 'Poppins_400Regular' },
+  expenseComment: { color: colors.textComment, fontFamily: 'Poppins_400Regular', fontStyle: 'italic' },
   expenseAmount: { fontFamily: 'Poppins_600SemiBold', color: theme.colors.onSurface },
 });

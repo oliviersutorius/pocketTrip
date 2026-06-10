@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 16,
     padding: 16,
     maxHeight: '80%',
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
   },
   title: {
     marginBottom: 12,

@@ -5,11 +5,11 @@ import * as db from '../db/database';
 interface ProjectStore {
   projects: Project[];
   selectedProjectId: number | null;
-  loadProjects: () => void;
+  loadProjects: () => Promise<void>;
   selectProject: (id: number) => void;
-  createProject: (data: Omit<Project, 'id' | 'created_at'>) => number;
-  updateProject: (id: number, data: Omit<Project, 'id' | 'created_at'>) => void;
-  deleteProject: (id: number) => void;
+  createProject: (data: Omit<Project, 'id' | 'created_at'>) => Promise<number>;
+  updateProject: (id: number, data: Omit<Project, 'id' | 'created_at'>) => Promise<void>;
+  deleteProject: (id: number) => Promise<void>;
   getSelectedProject: () => Project | undefined;
 }
 
@@ -17,29 +17,29 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   projects: [],
   selectedProjectId: null,
 
-  loadProjects: () => {
-    set({ projects: db.getProjects() });
+  loadProjects: async () => {
+    set({ projects: await db.getProjects() });
   },
 
   selectProject: (id) => {
     set({ selectedProjectId: id });
   },
 
-  createProject: (data) => {
-    const id = db.createProject(data);
-    set({ projects: db.getProjects() });
+  createProject: async (data) => {
+    const id = await db.createProject(data);
+    set({ projects: await db.getProjects() });
     return id;
   },
 
-  updateProject: (id, data) => {
-    db.updateProject(id, data);
-    set({ projects: db.getProjects() });
+  updateProject: async (id, data) => {
+    await db.updateProject(id, data);
+    set({ projects: await db.getProjects() });
   },
 
-  deleteProject: (id) => {
-    db.deleteProject(id);
+  deleteProject: async (id) => {
+    await db.deleteProject(id);
     set((state) => ({
-      projects: db.getProjects(),
+      projects: state.projects.filter((p) => p.id !== id),
       selectedProjectId: state.selectedProjectId === id ? null : state.selectedProjectId,
     }));
   },

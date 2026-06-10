@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { View, ScrollView, StyleSheet, Alert } from 'react-native';
+import { View, ScrollView, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { Text, Card, TouchableRipple, FAB, ProgressBar, Divider } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
 import { differenceInDays, parseISO, isAfter, isBefore, format } from 'date-fns';
@@ -9,28 +9,40 @@ import type { ProjectTabProps } from '../navigation/types';
 import { useProjectStore } from '../stores/projectStore';
 import { useExpenseStore } from '../stores/expenseStore';
 import { exportToPDF } from '../utils/pdfExport';
-import { theme, spacing, radius } from '../theme';
+import { theme, spacing, radius, colors } from '../theme';
 
 export default function SummaryScreen({ route, navigation }: ProjectTabProps<'Summary'>) {
   const { projectId } = route.params;
   const { projects } = useProjectStore();
-  const { summary, participantSummary, expenses, totalSpent, loadExpenses } = useExpenseStore();
+  const { summary, participantSummary, expenses, totalSpent, loadExpenses, isLoading, loadedForProjectId } = useExpenseStore();
   const [exporting, setExporting] = useState(false);
 
   async function handleExport() {
     if (!project) return;
     if (expenses.length === 0) {
-      Alert.alert('Aucune dépense', 'Ajoutez des dépenses avant d\'exporter.');
+      Alert.alert('Aucune dépense', "Ajoutez des dépenses avant d'exporter.");
       return;
     }
-    setExporting(true);
-    try {
-      await exportToPDF(project, summary, expenses, totalSpent);
-    } catch {
-      Alert.alert('Erreur', 'Impossible de générer le PDF.');
-    } finally {
-      setExporting(false);
-    }
+    Alert.alert(
+      'Exporter en PDF',
+      'Ce document contiendra vos données de budget et toutes vos dépenses. Partagez-le uniquement avec des personnes de confiance.',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Exporter',
+          onPress: async () => {
+            setExporting(true);
+            try {
+              await exportToPDF(project, summary, expenses, totalSpent);
+            } catch {
+              Alert.alert('Erreur', 'Impossible de générer le PDF.');
+            } finally {
+              setExporting(false);
+            }
+          },
+        },
+      ]
+    );
   }
 
   useFocusEffect(
@@ -41,6 +53,14 @@ export default function SummaryScreen({ route, navigation }: ProjectTabProps<'Su
 
   const project = projects.find((p) => p.id === projectId);
   if (!project) return null;
+
+  if (isLoading && loadedForProjectId !== projectId) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
 
   const remaining = project.initial_budget - totalSpent;
   const progress = Math.min(totalSpent / project.initial_budget, 1);
@@ -135,6 +155,16 @@ export default function SummaryScreen({ route, navigation }: ProjectTabProps<'Su
           </Card>
         )}
 
+        {categoryItems.length === 0 && !isLoading && (
+          <Card style={styles.card}>
+            <Card.Content style={styles.emptyCard}>
+              <Text variant="bodyMedium" style={styles.emptyText}>
+                Aucune dépense enregistrée — appuyez sur + pour commencer.
+              </Text>
+            </Card.Content>
+          </Card>
+        )}
+
         {categoryItems.length > 0 && (
           <Card style={[styles.card, styles.categoryCard]}>
             <Card.Content>
@@ -173,6 +203,7 @@ export default function SummaryScreen({ route, navigation }: ProjectTabProps<'Su
         icon="plus"
         style={styles.fab}
         onPress={() => navigation.getParent()?.navigate('AddExpense', { projectId })}
+        accessibilityLabel="Ajouter une dépense"
       />
       <FAB
         icon={exporting ? 'loading' : 'file-pdf-box'}
@@ -180,6 +211,7 @@ export default function SummaryScreen({ route, navigation }: ProjectTabProps<'Su
         size="small"
         onPress={handleExport}
         disabled={exporting}
+        accessibilityLabel="Exporter en PDF"
       />
     </View>
   );
@@ -187,14 +219,15 @@ export default function SummaryScreen({ route, navigation }: ProjectTabProps<'Su
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background },
   list: { padding: spacing.md, paddingBottom: 100, gap: spacing.md },
   card: { borderRadius: radius.card, backgroundColor: theme.colors.surface },
   categoryCard: { overflow: 'hidden' },
   sectionTitle: { fontFamily: 'Poppins_600SemiBold', color: theme.colors.primary, marginBottom: spacing.sm },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 4 },
-  label: { color: '#666' },
+  label: { color: colors.textMuted },
   spent: { fontFamily: 'Poppins_600SemiBold', color: theme.colors.onSurface },
-  muted: { color: '#666' },
+  muted: { color: colors.textMuted },
   progress: { marginVertical: 8, height: 8, borderRadius: 4 },
   divider: { marginVertical: 8 },
   innerDivider: { marginVertical: 4 },
@@ -203,5 +236,7 @@ const styles = StyleSheet.create({
   categoryRight: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   categoryAmount: { color: theme.colors.primary, fontFamily: 'Poppins_600SemiBold' },
   fab: { position: 'absolute', right: spacing.md, bottom: spacing.lg, backgroundColor: theme.colors.primary },
+  emptyCard: { alignItems: 'center', paddingVertical: spacing.md },
+  emptyText: { color: colors.textMuted, textAlign: 'center' },
   fabPdf: { position: 'absolute', right: spacing.md, bottom: 90, backgroundColor: theme.colors.secondary },
 });

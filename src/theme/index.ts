@@ -29,3 +29,13 @@ export const radius = {
   button: 8,
   input: 8,
 };
+
+export const colors = {
+  textMuted: '#666',         // labels secondaires, texte de support
+  textFaint: '#999',         // texte très atténué (sous-totaux, états vides, chevrons)
+  textComment: '#888',       // commentaires en italique, texte tertiaire
+  textDark: '#555',          // texte sombre atténué (dates dans détail catégorie)
+  surfaceHighlight: '#E3F2FD', // fond chips, surfaces en surbrillance légère
+  border: '#e0e0e0',         // séparateurs de liste, bordures de carte
+  inputDisabled: '#ccc',     // icônes/inputs désactivés
+} as const;

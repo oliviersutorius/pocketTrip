@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Platform } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Text, TextInput, Button, HelperText } from 'react-native-paper';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { format, parseISO } from 'date-fns';
@@ -34,25 +34,48 @@ export default function CreateProjectScreen({ navigation, route }: RootStackProp
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const savedRef = useRef(false);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      if (savedRef.current || !dirty) return;
+      e.preventDefault();
+      Alert.alert(
+        'Quitter sans enregistrer ?',
+        'Vos modifications seront perdues.',
+        [
+          { text: 'Rester', style: 'cancel' },
+          { text: 'Quitter', style: 'destructive', onPress: () => navigation.dispatch(e.data.action) },
+        ]
+      );
+    });
+    return unsubscribe;
+  }, [navigation, dirty]);
 
   useEffect(() => {
     if (mode === 'edit' && params?.projectId) {
-      const project = getProject(params.projectId);
-      if (project) {
-        setName(project.name);
-        setStartDate(parseISO(project.start_date));
-        setEndDate(parseISO(project.end_date));
-        setBudget(String(project.initial_budget));
-        setCurrency(project.currency);
+      async function load() {
+        const project = await getProject(params!.projectId!);
+        if (project) {
+          setName(project.name);
+          setStartDate(parseISO(project.start_date));
+          setEndDate(parseISO(project.end_date));
+          setBudget(String(project.initial_budget));
+          setCurrency(project.currency);
+        }
+        const existing = await getParticipants(params!.projectId!);
+        setParticipants(existing.map((p) => ({ id: p.id, name: p.name })));
       }
-      const existing = getParticipants(params.projectId);
-      setParticipants(existing.map((p) => ({ id: p.id, name: p.name })));
+      load();
     }
   }, []);
 
   function validate() {
     const e: Record<string, string> = {};
     if (!name.trim()) e.name = 'Le nom est requis';
+    if (name.trim().length > 100) e.name = 'Le nom ne peut pas dépasser 100 caractères';
     if (endDate < startDate) e.endDate = 'La date de fin doit être après la date de début';
     const b = parseAmount(budget);
     if (b === null || b <= 0) e.budget = 'Le budget doit être un nombre positif';
@@ -60,8 +83,9 @@ export default function CreateProjectScreen({ navigation, route }: RootStackProp
     return Object.keys(e).length === 0;
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!validate()) return;
+    setSaving(true);
 
     const data = {
       name: name.trim(),
@@ -71,21 +95,27 @@ export default function CreateProjectScreen({ navigation, route }: RootStackProp
       currency,
     };
 
-    if (mode === 'edit' && params?.projectId) {
-      updateProject(params.projectId, data);
-      syncProjectParticipants(params.projectId, participants);
-      navigation.goBack();
-    } else {
-      const newProjectId = createProject(data);
-      for (const p of participants) {
-        addParticipant(newProjectId, p.name);
+    try {
+      if (mode === 'edit' && params?.projectId) {
+        await updateProject(params.projectId, data);
+        await syncProjectParticipants(params.projectId, participants);
+        savedRef.current = true;
+        navigation.goBack();
+      } else {
+        const newProjectId = await createProject(data);
+        for (const p of participants) {
+          await addParticipant(newProjectId, p.name);
+        }
+        savedRef.current = true;
+        navigation.navigate('Home');
       }
-      navigation.navigate('Home');
+    } finally {
+      setSaving(false);
     }
   }
 
-  function handleAddParticipant(name: string) {
-    setParticipants((prev) => [...prev, { name }]);
+  function handleAddParticipant(pName: string) {
+    setParticipants((prev) => [...prev, { name: pName }]);
   }
 
   function handleRemoveParticipant(index: number) {
@@ -97,10 +127,11 @@ export default function CreateProjectScreen({ navigation, route }: RootStackProp
       <TextInput
         label="Nom du voyage"
         value={name}
-        onChangeText={setName}
+        onChangeText={(t) => { setName(t); setDirty(true); }}
         placeholder="ex : Rome 2026"
         style={styles.input}
         error={!!errors.name}
+        maxLength={100}
       />
       {errors.name && <HelperText type="error">{errors.name}</HelperText>}
 
@@ -116,7 +147,7 @@ export default function CreateProjectScreen({ navigation, route }: RootStackProp
         <DateTimePicker
           value={startDate}
           mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          display="default"
           onChange={(_, date) => {
             setShowStartPicker(false);
             if (date) setStartDate(date);
@@ -136,7 +167,7 @@ export default function CreateProjectScreen({ navigation, route }: RootStackProp
         <DateTimePicker
           value={endDate}
           mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          display="default"
           minimumDate={startDate}
           onChange={(_, date) => {
             setShowEndPicker(false);
@@ -149,7 +180,7 @@ export default function CreateProjectScreen({ navigation, route }: RootStackProp
       <TextInput
         label="Budget initial"
         value={budget}
-        onChangeText={setBudget}
+        onChangeText={(t) => { setBudget(t); setDirty(true); }}
         keyboardType="decimal-pad"
         style={styles.input}
         error={!!errors.budget}
@@ -170,6 +201,8 @@ export default function CreateProjectScreen({ navigation, route }: RootStackProp
         onPress={handleSave}
         style={styles.saveButton}
         contentStyle={styles.saveButtonContent}
+        loading={saving}
+        disabled={saving}
       >
         {mode === 'edit' ? 'Enregistrer' : 'Créer le voyage'}
       </Button>

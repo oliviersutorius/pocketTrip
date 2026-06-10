@@ -198,7 +198,7 @@ function buildExpenseList(expenses: ExpenseWithDetails[]): string {
         htmlRows.push(`<tr${rowClass}>
           ${catCell}${subCell}
           <td>${dateStr}</td>
-          <td>${escapeHtml(e.comment ?? '')}</td>
+          <td>${escapeHtml((e.comment ?? '').slice(0, 500))}</td>
           <td class="amount">${formatAmount(e.amount, e.currency)}</td>
         </tr>`);
         firstCat = false;
