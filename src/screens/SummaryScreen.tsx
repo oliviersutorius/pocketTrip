@@ -51,6 +51,14 @@ export default function SummaryScreen({ route, navigation }: ProjectTabProps<'Su
     }, [projectId])
   );
 
+  // Hooks appelés inconditionnellement avant tout early return
+  const today = new Date();
+  const todayStr = format(today, 'yyyy-MM-dd');
+  const spentToday = useMemo(
+    () => expenses.filter((e) => e.date.startsWith(todayStr)).reduce((sum, e) => sum + e.amount, 0),
+    [expenses, todayStr]
+  );
+
   const project = projects.find((p) => p.id === projectId);
   if (!project) return null;
 
@@ -65,19 +73,12 @@ export default function SummaryScreen({ route, navigation }: ProjectTabProps<'Su
   const remaining = project.initial_budget - totalSpent;
   const progress = Math.min(totalSpent / project.initial_budget, 1);
 
-  const today = new Date();
   const startDate = parseISO(project.start_date);
   const endDate = parseISO(project.end_date);
   const referenceDate = isBefore(today, startDate) ? startDate : today;
   const daysLeft = isAfter(endDate, referenceDate) ? differenceInDays(endDate, referenceDate) + 1 : 0;
   const budgetPerDay = daysLeft > 0 ? remaining / daysLeft : 0;
   const tripStarted = !isBefore(today, startDate);
-
-  const todayStr = format(today, 'yyyy-MM-dd');
-  const spentToday = useMemo(
-    () => expenses.filter((e) => e.date.startsWith(todayStr)).reduce((sum, e) => sum + e.amount, 0),
-    [expenses, todayStr]
-  );
   const todayLabel = format(today, 'd MMMM', { locale: fr });
 
   const progressColor = progress > 0.9 ? theme.colors.error : progress > 0.7 ? '#FF9800' : theme.colors.primary;
@@ -188,7 +189,7 @@ export default function SummaryScreen({ route, navigation }: ProjectTabProps<'Su
                       <Text variant="bodyLarge" style={styles.categoryAmount}>
                         {item.total.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} {project.currency}
                       </Text>
-                      <MaterialCommunityIcons name="chevron-right" size={20} color="#999" />
+                      <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textFaint} />
                     </View>
                   </View>
                 </TouchableRipple>
