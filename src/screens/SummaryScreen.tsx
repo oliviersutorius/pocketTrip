@@ -16,6 +16,7 @@ export default function SummaryScreen({ route, navigation }: ProjectTabProps<'Su
   const { projects } = useProjectStore();
   const { summary, participantSummary, expenses, totalSpent, loadExpenses, isLoading, loadedForProjectId } = useExpenseStore();
   const [exporting, setExporting] = useState(false);
+  const [expandedParticipants, setExpandedParticipants] = useState<Set<number>>(new Set());
 
   async function handleExport() {
     if (!project) return;
@@ -58,6 +59,35 @@ export default function SummaryScreen({ route, navigation }: ProjectTabProps<'Su
     () => expenses.filter((e) => e.date.startsWith(todayStr)).reduce((sum, e) => sum + e.amount, 0),
     [expenses, todayStr]
   );
+
+  const participantBalances = useMemo(() => {
+    if (participantSummary.length === 0) return [];
+    const equalShare = totalSpent / participantSummary.length;
+    return participantSummary.map((ps) => ({ ...ps, balance: ps.total - equalShare }));
+  }, [participantSummary, totalSpent]);
+
+  const transfers = useMemo(() => {
+    if (participantBalances.length < 3) return [];
+    const creditors = participantBalances
+      .filter((p) => p.balance > 0.005)
+      .map((p) => ({ id: p.participant_id, name: p.participant_name, balance: p.balance }));
+    const debtors = participantBalances
+      .filter((p) => p.balance < -0.005)
+      .map((p) => ({ id: p.participant_id, name: p.participant_name, balance: p.balance }));
+    const result: { fromId: number; fromName: string; toId: number; toName: string; amount: number }[] = [];
+    let i = 0, j = 0;
+    while (i < debtors.length && j < creditors.length) {
+      const amount = Math.min(-debtors[i].balance, creditors[j].balance);
+      if (amount > 0.005) {
+        result.push({ fromId: debtors[i].id, fromName: debtors[i].name, toId: creditors[j].id, toName: creditors[j].name, amount });
+      }
+      debtors[i].balance += amount;
+      creditors[j].balance -= amount;
+      if (Math.abs(debtors[i].balance) < 0.005) i++;
+      if (Math.abs(creditors[j].balance) < 0.005) j++;
+    }
+    return result;
+  }, [participantBalances]);
 
   const project = projects.find((p) => p.id === projectId);
   if (!project) return null;
@@ -142,22 +172,76 @@ export default function SummaryScreen({ route, navigation }: ProjectTabProps<'Su
           </Card.Content>
         </Card>
 
-        {participantSummary.length > 0 && (
-          <Card style={styles.card}>
+        {participantBalances.length > 0 && (
+          <Card style={[styles.card, styles.participantCard]}>
             <Card.Content>
               <Text variant="titleMedium" style={styles.sectionTitle}>Par participant</Text>
-              {participantSummary.map((ps, index) => (
-                <View key={ps.participant_id}>
-                  {index > 0 && <Divider style={styles.innerDivider} />}
-                  <View style={styles.row}>
-                    <Text variant="bodyMedium" style={styles.label}>{ps.participant_name}</Text>
+            </Card.Content>
+            {participantBalances.map((ps, index) => {
+              const isCollapsible = participantBalances.length >= 3;
+              const isExpanded = expandedParticipants.has(ps.participant_id);
+              const myTransfers = transfers.filter((t) => t.fromId === ps.participant_id || t.toId === ps.participant_id);
+
+              const rowContent = (
+                <View style={styles.participantRow}>
+                  <Text variant="bodyMedium" style={styles.label}>{ps.participant_name}</Text>
+                  <View style={styles.participantAmounts}>
                     <Text variant="bodyMedium" style={styles.spent}>
                       {ps.total.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} {project.currency}
                     </Text>
+                    {participantBalances.length > 1 && (
+                      <Text
+                        variant="bodySmall"
+                        style={[styles.balance, { color: ps.balance >= 0 ? colors.budgetPositive : theme.colors.error }]}
+                      >
+                        {` (${ps.balance >= 0 ? '+' : ''}${ps.balance.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} ${project.currency})`}
+                      </Text>
+                    )}
+                    {isCollapsible && (
+                      <MaterialCommunityIcons
+                        name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                        size={20}
+                        color={colors.textFaint}
+                        style={{ marginLeft: 4 }}
+                        accessibilityElementsHidden
+                        importantForAccessibility="no"
+                      />
+                    )}
                   </View>
                 </View>
-              ))}
-            </Card.Content>
+              );
+
+              return (
+                <View key={ps.participant_id}>
+                  {index > 0 && <Divider />}
+                  {isCollapsible ? (
+                    <TouchableRipple
+                      onPress={() => setExpandedParticipants((prev) => {
+                        const next = new Set(prev);
+                        next.has(ps.participant_id) ? next.delete(ps.participant_id) : next.add(ps.participant_id);
+                        return next;
+                      })}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${ps.participant_name}, ${isExpanded ? 'réduire' : 'voir les remboursements'}`}
+                    >
+                      {rowContent}
+                    </TouchableRipple>
+                  ) : (
+                    rowContent
+                  )}
+                  {isExpanded && myTransfers.map((t) => (
+                    <View key={`${t.fromId}-${t.toId}`} style={styles.transferRow}>
+                      <Text variant="bodySmall" style={styles.transferLabel}>
+                        {t.toId === ps.participant_id ? `${t.fromName} lui doit` : `Doit à ${t.toName}`}
+                      </Text>
+                      <Text variant="bodySmall" style={styles.transferAmount}>
+                        {t.amount.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} {project.currency}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              );
+            })}
           </Card>
         )}
 
@@ -248,4 +332,11 @@ const styles = StyleSheet.create({
   emptyText: { color: colors.textMuted, textAlign: 'center' },
   fabPdf: { position: 'absolute', right: spacing.md, bottom: 90, backgroundColor: theme.colors.secondary },
   bold: { fontFamily: 'Poppins_600SemiBold' },
+  participantCard: { overflow: 'hidden' },
+  participantRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10 },
+  participantAmounts: { flexDirection: 'row', alignItems: 'center' },
+  balance: { fontStyle: 'italic' },
+  transferRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingLeft: 32, paddingVertical: 6, backgroundColor: theme.colors.background },
+  transferLabel: { color: colors.textMuted, fontStyle: 'italic' },
+  transferAmount: { color: theme.colors.onSurface },
 });
