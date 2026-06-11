@@ -3,6 +3,7 @@ import { View, StyleSheet } from 'react-native';
 import { Text, TextInput, IconButton, Divider } from 'react-native-paper';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { theme, spacing, colors } from '../theme';
+import { prepareParticipantName } from '../utils/participantUtils';
 
 interface LocalParticipant {
   id?: number;
@@ -19,13 +20,9 @@ export default function ParticipantManager({ participants, onAdd, onRemove }: Pr
   const [input, setInput] = useState('');
 
   function handleAdd() {
-    const trimmed = input.trim().slice(0, 100);
-    if (!trimmed) return;
-    const alreadyExists = participants.some(
-      (p) => p.name.toLowerCase() === trimmed.toLowerCase()
-    );
-    if (alreadyExists) return;
-    onAdd(trimmed);
+    const name = prepareParticipantName(input, participants);
+    if (!name) return;
+    onAdd(name);
     setInput('');
   }
 

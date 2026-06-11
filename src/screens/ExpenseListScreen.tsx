@@ -30,7 +30,12 @@ const DaySection = memo(function DaySection({
 
   return (
     <Card style={[styles.dayCard, { overflow: 'hidden' }]}>
-      <TouchableRipple onPress={() => onToggle(dateKey)} accessibilityLabel={`Section du ${dateKey}`}>
+      <TouchableRipple
+        onPress={() => onToggle(dateKey)}
+        accessibilityLabel={`${format(parseISO(dateKey), 'EEEE d MMMM yyyy', { locale: fr })}, total ${dayTotal.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} ${projectCurrency}`}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: isExpanded }}
+      >
         <View style={styles.dayHeader}>
           <View>
             <Text variant="labelLarge" style={styles.dateLabel}>
@@ -44,6 +49,8 @@ const DaySection = memo(function DaySection({
             name={isExpanded ? 'chevron-up' : 'chevron-down'}
             size={22}
             color="#999"
+            accessibilityElementsHidden
+            importantForAccessibility="no"
           />
         </View>
       </TouchableRipple>

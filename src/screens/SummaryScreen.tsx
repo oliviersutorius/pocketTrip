@@ -103,7 +103,12 @@ export default function SummaryScreen({ route, navigation }: ProjectTabProps<'Su
                 {project.initial_budget.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} {project.currency}
               </Text>
             </View>
-            <ProgressBar progress={progress} color={progressColor} style={styles.progress} />
+            <ProgressBar
+              progress={progress}
+              color={progressColor}
+              style={styles.progress}
+              accessibilityLabel={`Budget utilisé à ${Math.round(progress * 100)} %`}
+            />
             <View style={styles.row}>
               <Text variant="bodyMedium" style={styles.label}>Restant</Text>
               <Text variant="titleMedium" style={[styles.bold, { color: remaining >= 0 ? colors.budgetPositive : theme.colors.error }]}>
@@ -182,6 +187,8 @@ export default function SummaryScreen({ route, navigation }: ProjectTabProps<'Su
                       projectId,
                     })
                   }
+                  accessibilityLabel={`${item.category_name}, ${item.total.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} ${project.currency}, voir le détail`}
+                  accessibilityRole="button"
                 >
                   <View style={styles.categoryRow}>
                     <Text variant="bodyLarge" style={styles.categoryName}>{item.category_name}</Text>
@@ -189,7 +196,7 @@ export default function SummaryScreen({ route, navigation }: ProjectTabProps<'Su
                       <Text variant="bodyLarge" style={styles.categoryAmount}>
                         {item.total.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} {project.currency}
                       </Text>
-                      <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textFaint} />
+                      <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textFaint} accessibilityElementsHidden importantForAccessibility="no" />
                     </View>
                   </View>
                 </TouchableRipple>

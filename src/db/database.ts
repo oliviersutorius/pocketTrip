@@ -193,25 +193,15 @@ export async function deleteExpense(id: number): Promise<void> {
 
 // --- Summary ---
 
-export async function getCategorySummary(projectId: number): Promise<CategorySummary[]> {
-  const rows = await db.getAllAsync<{
-    category_id: number;
-    category_name: string;
-    subcategory_id: number;
-    subcategory_name: string;
-    total: number;
-  }>(
-    `SELECT c.id as category_id, c.name as category_name,
-            s.id as subcategory_id, s.name as subcategory_name,
-            COALESCE(SUM(e.amount), 0) as total
-     FROM categories c
-     JOIN subcategories s ON s.category_id = c.id
-     LEFT JOIN expenses e ON e.subcategory_id = s.id AND e.project_id = ?
-     GROUP BY c.id, s.id
-     ORDER BY c.id, s.id`,
-    [projectId]
-  );
+type CategoryRow = {
+  category_id: number;
+  category_name: string;
+  subcategory_id: number;
+  subcategory_name: string;
+  total: number;
+};
 
+export function buildCategorySummary(rows: CategoryRow[]): CategorySummary[] {
   const map = new Map<number, CategorySummary>();
   for (const row of rows) {
     if (!map.has(row.category_id)) {
@@ -231,6 +221,21 @@ export async function getCategorySummary(projectId: number): Promise<CategorySum
     cat.total += row.total;
   }
   return Array.from(map.values());
+}
+
+export async function getCategorySummary(projectId: number): Promise<CategorySummary[]> {
+  const rows = await db.getAllAsync<CategoryRow>(
+    `SELECT c.id as category_id, c.name as category_name,
+            s.id as subcategory_id, s.name as subcategory_name,
+            COALESCE(SUM(e.amount), 0) as total
+     FROM categories c
+     JOIN subcategories s ON s.category_id = c.id
+     LEFT JOIN expenses e ON e.subcategory_id = s.id AND e.project_id = ?
+     GROUP BY c.id, s.id
+     ORDER BY c.id, s.id`,
+    [projectId]
+  );
+  return buildCategorySummary(rows);
 }
 
 // --- Participants ---

@@ -7,6 +7,7 @@ import { format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import type { RootStackProps } from '../navigation/types';
 import { parseAmount } from '../utils/validation';
+import { validateExpense } from '../utils/expenseValidation';
 import { useExpenseStore } from '../stores/expenseStore';
 import { getCategories, getSubcategories, getAllSubcategories, getExpense, getParticipants } from '../db/database';
 import CurrencyPicker, { getCurrencySymbol } from '../components/CurrencyPicker';
@@ -78,11 +79,7 @@ export default function AddExpenseScreen({ route, navigation }: Props) {
   }, [selectedCategoryId]);
 
   function validate() {
-    const e: Record<string, string> = {};
-    const a = parseAmount(amount);
-    if (a === null || a <= 0) e.amount = 'Montant invalide';
-    if (!selectedCategoryId) e.category = 'Choisissez une catégorie';
-    if (!selectedSubcategoryId) e.subcategory = 'Choisissez une sous-catégorie';
+    const e = validateExpense(amount, selectedCategoryId, selectedSubcategoryId);
     setErrors(e);
     return Object.keys(e).length === 0;
   }

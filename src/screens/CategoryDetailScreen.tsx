@@ -73,7 +73,12 @@ export default function CategoryDetailScreen({ route }: RootStackProps<'Category
             return (
               <View key={sub.subcategory_id}>
                 {index > 0 && <Divider />}
-                <TouchableRipple onPress={() => toggle(sub.subcategory_id)}>
+                <TouchableRipple
+                  onPress={() => toggle(sub.subcategory_id)}
+                  accessibilityLabel={`${sub.subcategory_name}, ${sub.total.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} ${project.currency}`}
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded: isExpanded }}
+                >
                   <View style={styles.subRow}>
                     <Text variant="bodyLarge" style={styles.subName}>{sub.subcategory_name}</Text>
                     <View style={styles.subRight}>
@@ -84,6 +89,8 @@ export default function CategoryDetailScreen({ route }: RootStackProps<'Category
                         name={isExpanded ? 'chevron-up' : 'chevron-down'}
                         size={20}
                         color={colors.textFaint}
+                        accessibilityElementsHidden
+                        importantForAccessibility="no"
                       />
                     </View>
                   </View>

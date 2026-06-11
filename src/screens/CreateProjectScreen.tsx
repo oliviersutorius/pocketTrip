@@ -9,6 +9,7 @@ import type { RootStackProps } from '../navigation/types';
 import { useProjectStore } from '../stores/projectStore';
 import { getProject, getParticipants, addParticipant, syncProjectParticipants } from '../db/database';
 import { parseAmount } from '../utils/validation';
+import { validateProject } from '../utils/projectValidation';
 import CurrencyPicker, { getCurrencySymbol } from '../components/CurrencyPicker';
 import ParticipantManager from '../components/ParticipantManager';
 import { theme, spacing, radius } from '../theme';
@@ -80,12 +81,7 @@ export default function CreateProjectScreen({ navigation, route }: RootStackProp
   }, [projectId]);
 
   function validate() {
-    const e: Record<string, string> = {};
-    if (!name.trim()) e.name = 'Le nom est requis';
-    if (name.trim().length > 100) e.name = 'Le nom ne peut pas dépasser 100 caractères';
-    if (endDate < startDate) e.endDate = 'La date de fin doit être après la date de début';
-    const b = parseAmount(budget);
-    if (b === null || b <= 0) e.budget = 'Le budget doit être un nombre positif';
+    const e = validateProject(name, startDate, endDate, budget);
     setErrors(e);
     return Object.keys(e).length === 0;
   }

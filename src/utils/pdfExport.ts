@@ -28,7 +28,7 @@ function polarToCartesian(cx: number, cy: number, r: number, angleDeg: number) {
   };
 }
 
-function svgPie(slices: { value: number; color: string }[], size: number): string {
+export function svgPie(slices: { value: number; color: string }[], size: number): string {
   const total = slices.reduce((s, sl) => s + sl.value, 0);
   if (total === 0) return '';
 

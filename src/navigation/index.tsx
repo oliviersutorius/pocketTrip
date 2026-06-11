@@ -1,4 +1,5 @@
 import React from 'react';
+import { Pressable } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useTheme } from 'react-native-paper';
@@ -35,13 +36,14 @@ function ProjectTabs({ route, navigation }: RootStackProps<'ProjectTabs'>) {
         headerTintColor: '#FFFFFF',
         headerTitleStyle: { fontFamily: 'Poppins_600SemiBold', flexShrink: 1 },
         headerLeft: () => (
-          <MaterialCommunityIcons
-            name="arrow-left"
-            size={24}
-            color="#FFFFFF"
-            style={{ marginLeft: 12, marginRight: 8 }}
+          <Pressable
             onPress={() => navigation.navigate('Home')}
-          />
+            accessibilityLabel="Retour à la liste des voyages"
+            accessibilityRole="button"
+            style={{ marginLeft: 12, marginRight: 8, padding: 4 }}
+          >
+            <MaterialCommunityIcons name="arrow-left" size={24} color="#FFFFFF" />
+          </Pressable>
         ),
       }}
     >
@@ -53,7 +55,7 @@ function ProjectTabs({ route, navigation }: RootStackProps<'ProjectTabs'>) {
           tabBarLabel: 'Récapitulatif',
           headerTitle: projectName ? `Récapitulatif · ${projectName}` : 'Récapitulatif',
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="chart-bar" size={size} color={color} />
+            <MaterialCommunityIcons name="chart-bar" size={size} color={color} accessibilityElementsHidden />
           ),
         }}
       />
@@ -65,7 +67,7 @@ function ProjectTabs({ route, navigation }: RootStackProps<'ProjectTabs'>) {
           tabBarLabel: 'Dépenses',
           headerTitle: projectName ? `Dépenses · ${projectName}` : 'Dépenses',
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="format-list-bulleted" size={size} color={color} />
+            <MaterialCommunityIcons name="format-list-bulleted" size={size} color={color} accessibilityElementsHidden />
           ),
         }}
       />
@@ -76,7 +78,7 @@ function ProjectTabs({ route, navigation }: RootStackProps<'ProjectTabs'>) {
         options={{
           title: 'Projet',
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="information-outline" size={size} color={color} />
+            <MaterialCommunityIcons name="information-outline" size={size} color={color} accessibilityElementsHidden />
           ),
         }}
       />
